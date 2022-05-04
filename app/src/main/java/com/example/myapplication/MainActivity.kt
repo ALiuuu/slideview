@@ -230,6 +230,7 @@ class MainActivity : AppCompatActivity() {
                 seekHandler.post(updateSeekBar)
             }
             it.setOnCompletionListener {
+                stIndex = 0
                 it.seekTo(0)
                 it.start()
             }

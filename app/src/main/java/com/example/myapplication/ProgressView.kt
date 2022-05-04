@@ -53,11 +53,8 @@ class ProgressView : View {
         super.onDraw(canvas)
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
         canvas.drawRect(0f, 0f, width * (curDuration.toFloat() / totalDuration), height.toFloat(), progressPaint)
-        Log.e("zhaoleihe", "o=============== ${timestamps.size}" )
         for (timestamp in timestamps) {
             canvas.drawPoint(width * (timestamp * 1000f / totalDuration).toFloat(), height.toFloat() / 2, pointPaint)
-            Log.e("zhaoleihe", "onDraw: ${width * (timestamp * 1000f / totalDuration).toFloat()}" )
-            Log.e("zhaoleihe", "onDraw: ${timestamp}" )
         }
     }
 }
