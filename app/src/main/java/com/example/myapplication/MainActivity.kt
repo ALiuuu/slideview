@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
+import android.widget.CheckBox
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -44,6 +45,8 @@ class MainActivity : AppCompatActivity() {
     var speedView: TextView? = null
     var speedSeekBar: SeekBar? = null
 
+    var animCheckBox: CheckBox? = null
+
     var stIndex = 0
 
     private val updateSeekBar = object : Runnable {
@@ -76,8 +79,11 @@ class MainActivity : AppCompatActivity() {
             val nextIndex = (curIndex + 1) % pager.adapter!!.count
             val isScrollToNext = (nextIndex - 1 == curIndex)
             if (isScrollToNext) {
-                moveHelper!!.animatePagerTransition(true)
-//                pager.setCurrentItem(nextIndex, false)
+                if (animCheckBox?.isChecked == true) {
+                    moveHelper!!.animatePagerTransition(true)
+                } else {
+                    pager.setCurrentItem(nextIndex, false)
+                }
             } else {
                 pager.setCurrentItem(nextIndex, false)
             }
@@ -93,6 +99,7 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
 
+        animCheckBox = findViewById(R.id.cb_anim)
         progressView = findViewById(R.id.progress_view)
         nameview = findViewById(R.id.name_view)
         posView = findViewById(R.id.tv_pos)
@@ -166,6 +173,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
 
 //        slideView = findViewById(R.id.sv)
 //        slideView?.apply {
