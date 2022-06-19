@@ -13,4 +13,6 @@ interface SlideChild {
      */
     fun setSlideScale(scale: Float)
 
+    fun slideNext(hasAnim: Boolean)
+
 }

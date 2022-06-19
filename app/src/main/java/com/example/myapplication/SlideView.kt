@@ -29,7 +29,7 @@ class SlideView : BaseSlideView {
             field = value
             removeAllViews()
             field?.let {
-                for (index in 0..3) {
+                for (index in 0..10) {
                     val view = it.onCreateView(index)
                     views.add(view)
                     addView(view)
@@ -50,9 +50,18 @@ class SlideView : BaseSlideView {
     /**
      * sizes
      */
-    var cardWidth = dp2Pixel(325)
-    var cardHeight = dp2Pixel(549)
-    var topMargin = dp2Pixel(50)
+    val cardWidth: Int
+        get() {
+            return (cardHeight / 1600f * 740f).toInt()
+        }
+    val cardHeight: Int
+        get() {
+            return (0.93f * height).toInt()
+        }
+    val topMargin: Int
+        get() {
+            return ((height - cardHeight) * 0.5f).toInt()
+        }
     var cardOffset = dp2Pixel(10)
 
 
@@ -64,8 +73,13 @@ class SlideView : BaseSlideView {
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        val height = (0.93f * MeasureSpec.getSize(heightMeasureSpec)).toInt()
+        val width = (height / 1600f * 740f).toInt()
         for (view in views) {
-            view.measure(widthMeasureSpec, heightMeasureSpec)
+            view.measure(
+                MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
+            )
         }
     }
 
@@ -81,12 +95,6 @@ class SlideView : BaseSlideView {
                     topMargin + cardHeight
                 )
             }
-
-        }
-        for (index in flingViews.size - 1 downTo 0) {
-            flingViews[index].let {
-                bringChildToFront(it)
-            }
         }
     }
 
@@ -99,21 +107,11 @@ class SlideView : BaseSlideView {
 
     override fun onStartDrag() {
         updateAnimator.cancel()
-        dragView = views.first
     }
 
     override fun onDrag(deltaX: Float, deltaY: Float) {
-        dragView?.let {
-            it.translationX = deltaX
-            it.translationY = deltaY
-            var progress = max(abs(deltaX) / (width / 2), abs(deltaY) / (height / 2))
-            progress = Math.min(1f, progress)
-            updateCardScaleByDrag(progress)
-            var rotation = deltaX / width * 60
-            rotation = Math.min(rotation, 15F)
-            rotation = Math.max(rotation, -15F)
-            it.rotation = rotation
-        }
+        var progress = deltaX / (width / 2)
+        updateCardScaleByDrag(progress)
     }
 
 
@@ -121,100 +119,33 @@ class SlideView : BaseSlideView {
     // fling
     ///////////////////////////////////////////////////////////////////////////
 
-    var flingStartValue = arrayOf(AnimValue(), AnimValue(), AnimValue())
+    val flingStartValue: List<AnimValue> by lazy {
+        val list = mutableListOf<AnimValue>()
+        for (index in 0 until views.size) {
+            list.add(AnimValue())
+        }
+        list
+    }
 
     class AnimValue {
         var scaleX = 0F
         var scaleY = 0F
         var translationY = 0F
+        var translationX = 0F
     }
 
     override fun flingCuzFast(velocityX: Int, velocityY: Int) {
-        dragView?.let {
-            //detached from views and take a new on
-            dragView = null
-            views.remove(it)
-            adapter!!.onCreateView(curIndex + 3).let {
-                views.add(it)
-                addView(it)
-                it.scaleX = 0.8f
-                it.scaleY = 0.8f
-                if (it is SlideChild) {
-                    it.setSlideScale(it.scaleX)
-                }
-                it.translationY =
-                    (topMargin - cardOffset - cardOffset) - (topMargin + cardHeight / 2) + (cardHeight / 2 * it.scaleY)
-            }
-            //hopeIndex update to next
+        if (velocityX > 0) {
+            curIndex--
+        } else {
             curIndex++
-            //keep animator refresh
-            updateAnimator.cancel()
-            updateAnimator.start()
-            //view anim
-            flingViews.add(it)
-            val startX = it.translationX
-            val startY = it.translationY
-            val endX: Float
-            val endY: Float
-            if (abs(velocityX) > abs(velocityY)) {
-                //x axis as main direction
-                endX = if (velocityX > 0) {
-                    width * 1.2F
-                } else {
-                    width * -1.2F
-                }
-                endY = startY + (endX - startX) / velocityX * velocityY
-            } else {
-                //y axis as main direction
-                endY = if (velocityY > 0) {
-                    height * 1.2F
-                } else {
-                    height * -1.2F
-                }
-                endX = startX + (endY - startY) / velocityY * velocityX
-            }
-            createFling(it, startX, startY, endX, endY).start()
         }
+        updateAnimator.cancel()
+        updateAnimator.start()
     }
 
     override fun flingCuzOut(x: Float, y: Float) {
         flingCuzFast((x - width / 2).toInt(), (y - (topMargin + cardHeight / 2)).toInt())
-    }
-
-    private fun createFling(
-        target: View,
-        startX: Float,
-        startY: Float,
-        endX: Float,
-        endY: Float,
-    ): ValueAnimator {
-        val fling = ValueAnimator.ofFloat(0.0f, 1.0f)
-        fling.addUpdateListener { animation ->
-            val progress = animation.animatedValue as Float
-            target.apply {
-                translationX = startX + progress * (endX - startX)
-                translationY = startY + progress * (endY - startY)
-            }
-        }
-        fling.addListener(object : Animator.AnimatorListener {
-            override fun onAnimationStart(animation: Animator?) {
-            }
-
-            override fun onAnimationEnd(animation: Animator?) {
-                removeView(target)
-                flingViews.remove(target)
-                adapter!!.onRemoveView(target)
-            }
-
-            override fun onAnimationCancel(animation: Animator?) {
-            }
-
-            override fun onAnimationRepeat(animation: Animator?) {
-            }
-
-        })
-        fling.duration = 300
-        return fling
     }
 
     private val updateAnimator: ValueAnimator by lazy {
@@ -224,10 +155,11 @@ class SlideView : BaseSlideView {
         }
         animator.addListener(object : Animator.AnimatorListener {
             override fun onAnimationStart(animation: Animator?) {
-                for (i in 0..2) {
+                for (i in 0 until views.size) {
                     views[i].let {
                         flingStartValue[i].scaleX = it.scaleX
                         flingStartValue[i].scaleY = it.scaleX
+                        flingStartValue[i].translationX = it.translationX
                         flingStartValue[i].translationY = it.translationY
                     }
                 }
@@ -251,29 +183,13 @@ class SlideView : BaseSlideView {
     // back
     ///////////////////////////////////////////////////////////////////////////
 
-    private var backStartX = 0F
-    private var backStartY = 0F
-    private var backStartRotation = 0F
-
     override fun onStartBack() {
-        dragView?.let {
-            backStartX = it.translationX
-            backStartY = it.translationY
-            backStartRotation = it.rotation
-        }
+        updateAnimator.cancel()
+        updateAnimator.start()
     }
 
     override fun onBacking(progress: Float) {
-        dragView?.let {
-            it.translationX = backStartX + progress * (-backStartX)
-            it.translationY = backStartY + progress * (-backStartY)
-            it.rotation = backStartRotation + progress * (-backStartRotation)
 
-            var progress =
-                max(abs(it.translationX) / (width / 2), abs(it.translationY) / (height / 2))
-            progress = Math.min(1f, progress)
-            updateCardScaleByDrag(progress)
-        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -281,33 +197,16 @@ class SlideView : BaseSlideView {
     ///////////////////////////////////////////////////////////////////////////
 
     private fun updateCardScaleByDrag(progress: Float) {
-        dragView?.let { dragView ->
-            val dragIndex = views.indexOf(dragView)
-            for (index in dragIndex + 1 until views.size) {
-                views[index].let {
-                    when (index) {
-                        dragIndex + 1 -> {
-                            it.scaleX = 0.9f + progress * 0.1f
-                            it.scaleY = 0.9f + progress * 0.1f
-                            it.translationY =
-                                (topMargin - cardOffset * (1 - progress)) - (topMargin + cardHeight / 2) + (cardHeight / 2 * it.scaleY)
-                        }
-                        dragIndex + 2 -> {
-                            it.scaleX = 0.8f + progress * 0.1f
-                            it.scaleY = 0.8f + progress * 0.1f
-                            it.translationY =
-                                (topMargin - cardOffset - cardOffset * (1 - progress)) - (topMargin + cardHeight / 2) + (cardHeight / 2 * it.scaleY)
-                        }
-                        else -> {
-                            it.scaleX = 0.8f
-                            it.scaleY = 0.8f
-                            it.translationY =
-                                (topMargin - cardOffset - cardOffset) - (topMargin + cardHeight / 2) + (cardHeight / 2 * it.scaleY)
-                        }
-                    }
-                    if (it is SlideChild) {
-                        it.setSlideScale(it.scaleX)
-                    }
+        for (index in 0 until views.size) {
+            views[index].let {
+                it.translationX = (cardWidth + cardOffset) * (0f + index - curIndex + progress)
+                var mask = if (abs(it.translationX) < (cardWidth + cardOffset)) {
+                    abs(it.translationX) / (cardWidth + cardOffset) * 0.6f
+                } else {
+                    0.6f
+                }
+                if (it is SlideChild) {
+                    it.setSlideScale(mask)
                 }
             }
         }
@@ -315,43 +214,22 @@ class SlideView : BaseSlideView {
     }
 
     private fun updateCardScaleToHope(progress: Float) {
-        for (index in 0..2) {
+        for (index in 0 until views.size) {
             views[index].let {
-                val hopeScaleX: Float
-                val hopeScaleY: Float
-                val hopeTranslationY: Float
-                when (index) {
-                    0 -> {
-                        hopeScaleX = 1f
-                        hopeScaleY = 1f
-                        hopeTranslationY =
-                            (topMargin) - (topMargin + cardHeight / 2) + (cardHeight / 2 * hopeScaleX)
-                    }
-                    1 -> {
-                        hopeScaleX = 0.9f
-                        hopeScaleY = 0.9f
-                        hopeTranslationY =
-                            (topMargin - cardOffset) - (topMargin + cardHeight / 2) + (cardHeight / 2 * hopeScaleX)
-                    }
-                    else -> {
-                        hopeScaleX = 0.8f
-                        hopeScaleY = 0.8f
-                        hopeTranslationY =
-                            (topMargin - cardOffset - cardOffset) - (topMargin + cardHeight / 2) + (cardHeight / 2 * hopeScaleX)
-                    }
+                val hopeTranslationX: Float = ((cardWidth + cardOffset) * (0f + index - curIndex))
+                it.translationX =
+                    flingStartValue[index].translationX + progress * (hopeTranslationX - flingStartValue[index].translationX)
+
+                var mask = if (abs(it.translationX) < (cardWidth + cardOffset)) {
+                    abs(it.translationX) / (cardWidth + cardOffset) * 0.6f
+                } else {
+                    0.6f
                 }
-                it.scaleX =
-                    flingStartValue[index].scaleX + progress * (hopeScaleX - flingStartValue[index].scaleX)
-                it.scaleY =
-                    flingStartValue[index].scaleY + progress * (hopeScaleY - flingStartValue[index].scaleY)
-                it.translationY =
-                    flingStartValue[index].translationY + progress * (hopeTranslationY - flingStartValue[index].translationY)
                 if (it is SlideChild) {
-                    it.setSlideScale(it.scaleX)
+                    it.setSlideScale(mask)
                 }
             }
         }
-
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -372,6 +250,42 @@ class SlideView : BaseSlideView {
 
     private fun dp2Pixel(dp: Int): Int {
         return (context.resources.displayMetrics.density * dp).toInt()
+    }
+
+
+    fun next(hasAnim: Boolean = false) {
+        curIndex++
+        if (hasAnim) {
+            updateAnimator.cancel()
+            updateAnimator.start()
+        } else {
+            updateCardScaleToHope(1f)
+        }
+    }
+
+    fun pre(hasAnim: Boolean = false) {
+        curIndex--
+        if (hasAnim) {
+            updateAnimator.cancel()
+            updateAnimator.start()
+        } else {
+            updateCardScaleToHope(1f)
+        }
+    }
+
+    fun slideNext() {
+        for (index in 0 until views.size) {
+            views[index].let {
+                if (it is SlideChild) {
+                    if (index % views.size == curIndex) {
+                        it.slideNext(true)
+                    } else {
+                        it.slideNext(false)
+
+                    }
+                }
+            }
+        }
     }
 
 
