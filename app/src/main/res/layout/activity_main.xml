@@ -7,7 +7,7 @@
     tools:context=".MainActivity">
 
 
-    <com.example.myapplication.IFNViewPager
+    <com.example.myapplication.IFNViewPager2
         android:id="@+id/infini_view_pager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
