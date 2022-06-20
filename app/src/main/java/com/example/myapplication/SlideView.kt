@@ -50,20 +50,29 @@ class SlideView : BaseSlideView {
     /**
      * sizes
      */
-    val cardWidth: Int
+    private val cardWidth: Int
         get() {
-            return (cardHeight / 1600f * 740f).toInt()
+            return (width * debugZoom).toInt()
         }
-    val cardHeight: Int
+    private val cardHeight: Int
         get() {
-            return (0.93f * height).toInt()
+            return (height * debugZoom).toInt()
         }
-    val topMargin: Int
+
+    private val cardLeftRightMargin: Int
         get() {
-            return ((height - cardHeight) * 0.5f).toInt()
+            return (width - cardWidth) / 2
         }
+
+    private val cardTopBottomMargin: Int
+        get() {
+            return (height - cardHeight) / 2
+        }
+
+
     var cardOffset = dp2Pixel(10)
 
+    var debugZoom = 0.7f
 
     var curIndex = 0
 
@@ -73,8 +82,8 @@ class SlideView : BaseSlideView {
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        val height = (0.93f * MeasureSpec.getSize(heightMeasureSpec)).toInt()
-        val width = (height / 1600f * 740f).toInt()
+        val height = (debugZoom * MeasureSpec.getSize(heightMeasureSpec)).toInt()
+        val width = (debugZoom * MeasureSpec.getSize(widthMeasureSpec)).toInt()
         for (view in views) {
             view.measure(
                 MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
@@ -87,12 +96,11 @@ class SlideView : BaseSlideView {
         for (index in views.size - 1 downTo 0) {
             views[index].let {
                 bringChildToFront(it)
-                val leftRightMargin = (width - cardWidth) / 2
                 it.layout(
-                    leftRightMargin,
-                    topMargin,
-                    leftRightMargin + cardWidth,
-                    topMargin + cardHeight
+                    cardLeftRightMargin,
+                    cardTopBottomMargin,
+                    cardLeftRightMargin + cardWidth,
+                    cardTopBottomMargin + cardHeight
                 )
             }
         }
@@ -145,7 +153,8 @@ class SlideView : BaseSlideView {
     }
 
     override fun flingCuzOut(x: Float, y: Float) {
-        flingCuzFast((x - width / 2).toInt(), (y - (topMargin + cardHeight / 2)).toInt())
+
+        flingCuzFast((x - width / 2).toInt(), (y - (cardTopBottomMargin + cardHeight / 2)).toInt())
     }
 
     private val updateAnimator: ValueAnimator by lazy {
@@ -205,9 +214,6 @@ class SlideView : BaseSlideView {
                 } else {
                     0.6f
                 }
-                if (it is SlideChild) {
-                    it.setSlideScale(mask)
-                }
             }
         }
 
@@ -225,9 +231,6 @@ class SlideView : BaseSlideView {
                 } else {
                     0.6f
                 }
-                if (it is SlideChild) {
-                    it.setSlideScale(mask)
-                }
             }
         }
     }
@@ -239,10 +242,11 @@ class SlideView : BaseSlideView {
     override fun inChild(x: Float, y: Float): Boolean {
         //over design,useless
         val leftRightMargin = (width - cardWidth) / 2
+        val topBottomMargin = (height - cardHeight) / 2
         if (x < leftRightMargin || x > leftRightMargin + cardWidth) {
             return false
         }
-        if (y < topMargin || y > topMargin + cardHeight) {
+        if (y < topBottomMargin || y > topBottomMargin + cardHeight) {
             return false
         }
         return true
@@ -276,14 +280,6 @@ class SlideView : BaseSlideView {
     fun slideNext() {
         for (index in 0 until views.size) {
             views[index].let {
-                if (it is SlideChild) {
-                    if (index % views.size == curIndex) {
-                        it.slideNext(true)
-                    } else {
-                        it.slideNext(false)
-
-                    }
-                }
             }
         }
     }
